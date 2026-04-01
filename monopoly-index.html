@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fortunopoly</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0e17;--board-bg:#0f1520;--board-border:#1a2235;--tile-bg:#141c2e;--tile-hover:#1a2540;--text:#e8eaf0;--text-dim:#6b7a99;--accent:#f0c040;--accent-glow:rgba(240,192,64,0.25);--danger:#e85454;--success:#42d392;--info:#5b8def;--orange:#f0884a;--card-bg:#161e30;--card-border:#1e2a44;--overlay:rgba(6,8,14,0.85);--shadow:0 8px 32px rgba(0,0,0,0.4);--radius:8px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+.screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px}.screen.active{display:flex}
+#lobby-screen{background:radial-gradient(ellipse at 50% 30%,#1a1040 0%,var(--bg) 70%)}
+.lobby-title{font-family:'Playfair Display',serif;font-weight:900;font-size:3.5rem;background:linear-gradient(135deg,var(--accent),#f8e080,var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;text-align:center}
+.lobby-sub{color:var(--text-dim);margin-bottom:40px;text-align:center}
+.lobby-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:32px;width:100%;max-width:420px;box-shadow:var(--shadow)}
+.lobby-card h3{font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:20px;color:var(--accent)}
+.form-group{margin-bottom:16px}.form-group label{display:block;font-size:.8rem;color:var(--text-dim);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:1px}
+.form-group input{width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--card-border);border-radius:var(--radius);color:var(--text);font-size:1rem;font-family:'DM Sans',sans-serif;outline:none}.form-group input:focus{border-color:var(--accent)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;border:none;border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.5px}
+.btn-primary{background:var(--accent);color:#0a0e17}.btn-primary:hover{background:#f8d060;transform:translateY(-1px);box-shadow:0 4px 20px var(--accent-glow)}
+.btn-secondary{background:var(--card-border);color:var(--text)}.btn-secondary:hover{background:#2a3654}
+.btn-danger{background:var(--danger);color:#fff}.btn-success{background:var(--success);color:#0a0e17}
+.btn-sm{padding:8px 16px;font-size:.8rem}.btn-block{width:100%}.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+.lobby-divider{text-align:center;color:var(--text-dim);margin:20px 0;font-size:.85rem;position:relative}
+.lobby-divider::before,.lobby-divider::after{content:'';position:absolute;top:50%;width:40%;height:1px;background:var(--card-border)}.lobby-divider::before{left:0}.lobby-divider::after{right:0}
+#waiting-screen{background:radial-gradient(ellipse at 50% 30%,#101830 0%,var(--bg) 70%)}
+.waiting-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:32px;width:100%;max-width:500px;box-shadow:var(--shadow);text-align:center}
+.room-code{font-family:'JetBrains Mono',monospace;font-size:2.5rem;color:var(--accent);letter-spacing:6px;margin:16px 0;padding:12px;background:var(--bg);border-radius:var(--radius);border:1px dashed var(--accent)}
+.player-list{list-style:none;margin:20px 0;text-align:left}.player-list li{padding:10px 16px;background:var(--bg);border-radius:var(--radius);margin-bottom:8px;display:flex;align-items:center;gap:10px;font-weight:600}
+.player-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}.host-badge{font-size:.7rem;background:var(--accent);color:#0a0e17;padding:2px 8px;border-radius:4px;margin-left:auto;font-weight:700}
+#game-screen{padding:0;align-items:stretch;justify-content:flex-start;flex-direction:row;min-height:100vh}
+.sidebar{width:300px;min-width:300px;background:var(--card-bg);border-right:1px solid var(--card-border);display:flex;flex-direction:column;height:100vh;overflow-y:auto;position:fixed;left:0;top:0;z-index:25}
+.sidebar-header{padding:16px 20px;border-bottom:1px solid var(--card-border);font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--accent)}
+.sidebar-section{padding:16px 20px;border-bottom:1px solid var(--card-border)}.sidebar-section h4{font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.player-info-card{padding:10px 12px;background:var(--bg);border-radius:var(--radius);margin-bottom:8px;border-left:3px solid var(--text-dim);transition:all .3s}
+.player-info-card.active-turn{border-left-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
+.player-info-name{font-weight:700;font-size:.9rem;display:flex;align-items:center;gap:6px}
+.player-info-money{font-family:'JetBrains Mono',monospace;color:var(--success);font-size:.85rem;margin-top:4px}
+.player-info-props{font-size:.75rem;color:var(--text-dim);margin-top:2px}
+.game-log{flex:1;overflow-y:auto;padding:12px 20px;font-size:.8rem;color:var(--text-dim);display:flex;flex-direction:column;gap:4px}
+.log-entry{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03);line-height:1.4}.log-entry strong{color:var(--text)}
+.game-main{margin-left:300px;display:flex;flex-direction:column;align-items:center;padding:20px;padding-bottom:20px;min-height:100vh}
+.board-container{position:relative;width:820px;height:820px;flex-shrink:0}
+.board{width:820px;height:820px;background:var(--board-bg);border:2px solid var(--board-border);border-radius:12px;position:relative;box-shadow:0 0 60px rgba(0,0,0,.5),inset 0 0 80px rgba(0,0,0,.3)}
+.board-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.board-center h1{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;background:linear-gradient(135deg,var(--accent),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.dice-area{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;gap:20px;z-index:10}
+.die{width:56px;height:56px;background:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:#0a0e17;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.die.rolling{animation:diceRoll .4s ease-in-out}
+@keyframes diceRoll{0%{transform:rotateZ(0) scale(1)}25%{transform:rotateZ(90deg) scale(1.1)}50%{transform:rotateZ(180deg) scale(1)}75%{transform:rotateZ(270deg) scale(1.1)}100%{transform:rotateZ(360deg) scale(1)}}
+.tile{position:absolute;background:var(--tile-bg);border:1px solid var(--board-border);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;font-size:.55rem;cursor:pointer;transition:background .2s;overflow:hidden;z-index:1}
+.tile:hover{background:var(--tile-hover);z-index:2}
+.tile-color{width:100%;height:10px;flex-shrink:0}
+.tile-name{padding:3px 2px;text-align:center;font-weight:600;line-height:1.2;flex:1;display:flex;align-items:center;color:var(--text);font-size:.52rem}
+.tile-price{font-family:'JetBrains Mono',monospace;font-size:.55rem;color:var(--success);padding-bottom:3px}
+.tile-corner{width:100px;height:100px;justify-content:center;font-size:.65rem;font-weight:700}.tile-corner .tile-name{font-size:.65rem}
+.tile .tile-icon{font-size:1.2rem;margin:2px 0}.tile-corner .tile-icon{font-size:1.8rem}
+.tile-owner{width:100%;height:4px;position:absolute;bottom:0}
+.tile-houses{display:flex;gap:1px;position:absolute;bottom:5px}
+.tile-mortgaged{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:.5rem;color:var(--danger);font-weight:700}
+.token{position:absolute;width:18px;height:18px;border-radius:50%;border:2px solid #fff;z-index:5;transition:all .6s cubic-bezier(.34,1.56,.64,1);box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:.55rem}
+/* ACTION BAR — not fixed, below the board */
+.action-bar{margin-left:300px;padding:16px 24px;background:var(--card-bg);border-top:1px solid var(--card-border);display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;position:sticky;bottom:0;z-index:20;box-shadow:0 -4px 20px rgba(0,0,0,.3)}
+.turn-info{font-weight:700;color:var(--accent);margin-right:8px;font-size:.95rem}
+.action-label{color:var(--text);font-size:.9rem;margin-right:4px;font-weight:600}
+.doubles-badge{background:var(--orange);color:#0a0e17;padding:4px 10px;border-radius:4px;font-size:.75rem;font-weight:700;margin-right:8px}
+.modal-overlay{position:fixed;inset:0;background:var(--overlay);display:none;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}
+.modal-overlay.active{display:flex}
+.modal{background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:28px;max-width:520px;width:90%;box-shadow:var(--shadow);max-height:90vh;overflow-y:auto}
+.modal h3{font-family:'Playfair Display',serif;font-size:1.3rem;margin-bottom:12px;color:var(--accent)}
+.modal .modal-text{color:var(--text-dim);line-height:1.5;margin-bottom:16px}
+.modal-actions{display:flex;gap:10px;flex-wrap:wrap}
+.prop-detail{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card-bg);border:1px solid var(--card-border);border-radius:16px;padding:24px;width:320px;box-shadow:var(--shadow);z-index:90;display:none}
+.prop-detail.active{display:block}.prop-detail .prop-color-bar{height:8px;border-radius:4px;margin-bottom:12px}
+.prop-detail h3{font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:8px}
+.prop-detail .prop-stats{font-size:.85rem;color:var(--text-dim)}.prop-detail .prop-stats div{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--card-border)}
+.prop-detail .prop-stats span:last-child{color:var(--text);font-family:'JetBrains Mono',monospace}
+.auction-box{background:var(--bg);border-radius:var(--radius);padding:16px;margin:12px 0}
+.auction-current{font-size:1.5rem;font-family:'JetBrains Mono',monospace;color:var(--accent);text-align:center;margin:8px 0}
+.auction-bidder{text-align:center;color:var(--text-dim);font-size:.85rem;margin-bottom:12px}
+.bid-buttons{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+/* TRADE */
+.trade-row{display:flex;gap:12px;margin:10px 0}.trade-col{flex:1;background:var(--bg);border-radius:var(--radius);padding:12px}
+.trade-col h4{font-size:.8rem;color:var(--accent);margin-bottom:8px;text-align:center}
+.trade-prop{padding:4px 8px;margin:3px 0;border-radius:4px;font-size:.78rem;cursor:pointer;transition:background .15s;border:1px solid transparent}
+.trade-prop:hover{background:var(--card-border)}.trade-prop.selected{border-color:var(--accent);background:rgba(240,192,64,.1)}
+.trade-money-input{width:100%;padding:6px 10px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.85rem;margin-top:6px;outline:none}
+.toast-container{position:fixed;top:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 20px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius);font-size:.85rem;box-shadow:var(--shadow);animation:toastIn .3s ease-out;max-width:350px}
+@keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+@media(max-width:1200px){
+  #game-screen{flex-direction:column}
+  .sidebar{position:relative;width:100%;min-width:unset;height:auto;max-height:200px;flex-direction:row;flex-wrap:wrap}
+  .game-main,.action-bar{margin-left:0}
+  .board-container,.board{width:620px;height:620px}
+}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--card-border);border-radius:3px}
+</style>
+</head>
+<body>
+<div id="lobby-screen" class="screen active">
+  <div class="lobby-title">Fortunopoly</div>
+  <div class="lobby-sub">A multiplayer property trading game</div>
+  <div class="lobby-card">
+    <h3>Create a Game</h3>
+    <div class="form-group"><label>Your Name</label><input id="player-name" type="text" placeholder="Enter your name" maxlength="16"></div>
+    <button class="btn btn-primary btn-block" onclick="createGame()">Create Room</button>
+    <div class="lobby-divider">or join</div>
+    <div class="form-group"><label>Room Code</label><input id="room-code" type="text" placeholder="Enter 5-letter code" maxlength="5" style="text-transform:uppercase"></div>
+    <button class="btn btn-secondary btn-block" onclick="joinGame()">Join Room</button>
+  </div>
+</div>
+<div id="waiting-screen" class="screen">
+  <div class="waiting-card">
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--accent)">Waiting for Players</h3>
+    <p style="color:var(--text-dim);margin:8px 0">Share this code:</p>
+    <div class="room-code" id="display-room-code">-----</div>
+    <ul class="player-list" id="waiting-player-list"></ul>
+    <p style="color:var(--text-dim);font-size:.8rem;margin-bottom:16px" id="waiting-status">Need 2+ players</p>
+    <button class="btn btn-primary btn-block" id="start-game-btn" onclick="startGame()" style="display:none">Start Game</button>
+    <button class="btn btn-secondary btn-sm" onclick="leaveRoom()" style="margin-top:10px">Leave</button>
+  </div>
+</div>
+<div id="game-screen" class="screen">
+  <div class="sidebar">
+    <div class="sidebar-header">Fortunopoly</div>
+    <div class="sidebar-section"><h4>Players</h4><div id="sidebar-players"></div></div>
+    <div class="sidebar-section" id="sidebar-actions" style="display:flex;flex-wrap:wrap;gap:6px;padding:12px 20px"></div>
+    <div class="sidebar-section" style="flex:1;display:flex;flex-direction:column;overflow:hidden"><h4>Game Log</h4><div class="game-log" id="game-log"></div></div>
+  </div>
+  <div class="game-main" id="game-main">
+    <div class="board-container">
+      <div class="board" id="board">
+        <div class="board-center"><h1>Fortunopoly</h1><p id="fp-display" style="font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:.9rem;margin-top:8px"></p></div>
+        <div class="dice-area"><div class="die" id="die1">?</div><div class="die" id="die2">?</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="action-bar" id="action-bar"></div>
+</div>
+<div class="modal-overlay" id="modal-overlay"><div class="modal" id="modal"><h3 id="modal-title"></h3><div id="modal-body" class="modal-text"></div><div class="modal-actions" id="modal-actions"></div></div></div>
+<div class="prop-detail" id="prop-detail"><div class="prop-color-bar" id="pd-color"></div><h3 id="pd-name"></h3><div class="prop-stats" id="pd-stats"></div><div style="margin-top:12px;display:flex;gap:8px" id="pd-actions"></div><button class="btn btn-secondary btn-sm" onclick="closePropDetail()" style="margin-top:8px;width:100%">Close</button></div>
+<div class="toast-container" id="toast-container"></div>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+firebase.initializeApp({apiKey:"AIzaSyASPNSXdFs2B3X8mbUq-nBYlgAIR7BSx6E",authDomain:"fortuna-64c00.firebaseapp.com",databaseURL:"https://fortuna-64c00-default-rtdb.firebaseio.com",projectId:"fortuna-64c00",storageBucket:"fortuna-64c00.firebasestorage.app",messagingSenderId:"329218105683",appId:"1:329218105683:web:6b16fd2b1091531e4481a6"});
+const db=firebase.database();
+const COLORS={brown:'#8B5E3C',lblue:'#88C8E8',pink:'#D94090',orange:'#E8903C',red:'#D03030',yellow:'#F0D030',green:'#2E9C5A',dblue:'#2650A8'};
+const PC=['#e85454','#5b8def','#42d392','#f0c040','#a87bff','#f06090','#40c8c0','#f0884a'],PI=['♛','♞','♝','♜','♚','♟','⚑','⚐'];
+const TILES=[
+{id:0,name:'GO',type:'corner',icon:'➡️'},{id:1,name:'Mediterranean Ave',type:'property',color:'brown',price:60,rent:[2,10,30,90,160,250],house:50},
+{id:2,name:'Community Chest',type:'chest',icon:'📦'},{id:3,name:'Baltic Ave',type:'property',color:'brown',price:60,rent:[4,20,60,180,320,450],house:50},
+{id:4,name:'Income Tax',type:'tax',icon:'💰',amount:200},{id:5,name:'Reading RR',type:'railroad',price:200,icon:'🚂'},
+{id:6,name:'Oriental Ave',type:'property',color:'lblue',price:100,rent:[6,30,90,270,400,550],house:50},
+{id:7,name:'Chance',type:'chance',icon:'❓'},{id:8,name:'Vermont Ave',type:'property',color:'lblue',price:100,rent:[6,30,90,270,400,550],house:50},
+{id:9,name:'Connecticut Ave',type:'property',color:'lblue',price:120,rent:[8,40,100,300,450,600],house:50},
+{id:10,name:'Jail',type:'corner',icon:'🔒'},{id:11,name:'St. Charles Pl',type:'property',color:'pink',price:140,rent:[10,50,150,450,625,750],house:100},
+{id:12,name:'Electric Co.',type:'utility',price:150,icon:'💡'},{id:13,name:'States Ave',type:'property',color:'pink',price:140,rent:[10,50,150,450,625,750],house:100},
+{id:14,name:'Virginia Ave',type:'property',color:'pink',price:160,rent:[12,60,180,500,700,900],house:100},
+{id:15,name:'Pennsylvania RR',type:'railroad',price:200,icon:'🚂'},{id:16,name:'St. James Pl',type:'property',color:'orange',price:180,rent:[14,70,200,550,750,950],house:100},
+{id:17,name:'Community Chest',type:'chest',icon:'📦'},{id:18,name:'Tennessee Ave',type:'property',color:'orange',price:180,rent:[14,70,200,550,750,950],house:100},
+{id:19,name:'New York Ave',type:'property',color:'orange',price:200,rent:[16,80,220,600,800,1000],house:100},
+{id:20,name:'Free Parking',type:'corner',icon:'🅿️'},{id:21,name:'Kentucky Ave',type:'property',color:'red',price:220,rent:[18,90,250,700,875,1050],house:150},
+{id:22,name:'Chance',type:'chance',icon:'❓'},{id:23,name:'Indiana Ave',type:'property',color:'red',price:220,rent:[18,90,250,700,875,1050],house:150},
+{id:24,name:'Illinois Ave',type:'property',color:'red',price:240,rent:[20,100,300,750,925,1100],house:150},
+{id:25,name:'B&O RR',type:'railroad',price:200,icon:'🚂'},{id:26,name:'Atlantic Ave',type:'property',color:'yellow',price:260,rent:[22,110,330,800,975,1150],house:150},
+{id:27,name:'Ventnor Ave',type:'property',color:'yellow',price:260,rent:[22,110,330,800,975,1150],house:150},
+{id:28,name:'Water Works',type:'utility',price:150,icon:'🚰'},{id:29,name:'Marvin Gardens',type:'property',color:'yellow',price:280,rent:[24,120,360,850,1025,1200],house:150},
+{id:30,name:'Go To Jail',type:'corner',icon:'👮'},{id:31,name:'Pacific Ave',type:'property',color:'green',price:300,rent:[26,130,390,900,1100,1275],house:200},
+{id:32,name:'N. Carolina Ave',type:'property',color:'green',price:300,rent:[26,130,390,900,1100,1275],house:200},
+{id:33,name:'Community Chest',type:'chest',icon:'📦'},{id:34,name:'Pennsylvania Ave',type:'property',color:'green',price:320,rent:[28,150,450,1000,1200,1400],house:200},
+{id:35,name:'Short Line RR',type:'railroad',price:200,icon:'🚂'},{id:36,name:'Chance',type:'chance',icon:'❓'},
+{id:37,name:'Park Place',type:'property',color:'dblue',price:350,rent:[35,175,500,1100,1300,1500],house:200},
+{id:38,name:'Luxury Tax',type:'tax',icon:'💎',amount:100},{id:39,name:'Boardwalk',type:'property',color:'dblue',price:400,rent:[50,200,600,1400,1700,2000],house:200}
+];
+const CHANCE=[{t:'Advance to GO (+$200)',a:'move',to:0},{t:'Go to Illinois Ave',a:'move',to:24},{t:'Go to St. Charles Pl',a:'move',to:11},{t:'Bank dividend +$50',a:'money',v:50},{t:'Get Out of Jail Free',a:'jail_free'},{t:'Go back 3 spaces',a:'back',v:3},{t:'Go to Jail',a:'jail'},{t:'Pay each player $50',a:'pay_each',v:50},{t:'Collect $150',a:'money',v:150},{t:'Speeding fine -$15',a:'money',v:-15},{t:'Go to Boardwalk',a:'move',to:39},{t:'Chairman — pay each $50',a:'pay_each',v:50}];
+const CHEST=[{t:'Advance to GO (+$200)',a:'move',to:0},{t:'Bank error +$200',a:'money',v:200},{t:"Doctor's fee -$50",a:'money',v:-50},{t:'Stock sale +$50',a:'money',v:50},{t:'Get Out of Jail Free',a:'jail_free'},{t:'Go to Jail',a:'jail'},{t:'Holiday fund +$100',a:'money',v:100},{t:'Tax refund +$20',a:'money',v:20},{t:'Insurance +$100',a:'money',v:100},{t:'Hospital -$100',a:'money',v:-100},{t:'School fees -$50',a:'money',v:-50},{t:'Consultancy +$25',a:'money',v:25}];
+
+let myId=null,roomId=null,roomRef=null,GS=null,isHost=false,listeners=[],lastAuc=null,lastTrade=null;
+// Trade state (local)
+let tradeTarget=null,tradeMyProps=[],tradeTheirProps=[],tradeMyMoney=0,tradeTheirMoney=0;
+
+function DC(o){return JSON.parse(JSON.stringify(o))}
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
+function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let r='';for(let i=0;i<5;i++)r+=c[~~(Math.random()*c.length)];return r}
+function getName(){return document.getElementById('player-name').value.trim()||'Player'+~~(Math.random()*999)}
+
+async function createGame(){
+  const name=getName(),code=genCode();myId='p_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);roomId=code;roomRef=db.ref('rooms/'+code);
+  const rd={code,host:myId,status:'waiting',players:{},created:Date.now()};rd.players[myId]={name,index:0,online:true};
+  await roomRef.set(rd);isHost=true;setupWaiting();
+}
+async function joinGame(){
+  const name=getName(),code=document.getElementById('room-code').value.trim().toUpperCase();
+  if(!code||code.length<3)return toast('Enter a valid code');
+  roomRef=db.ref('rooms/'+code);const snap=await roomRef.once('value');
+  if(!snap.exists())return toast('Room not found');const d=snap.val();
+  if(d.status!=='waiting')return toast('Game started');
+  const pc=Object.keys(d.players||{}).length;if(pc>=8)return toast('Full');
+  myId='p_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);roomId=code;
+  await roomRef.child('players/'+myId).set({name,index:pc,online:true});isHost=false;setupWaiting();
+}
+function setupWaiting(){
+  showScreen('waiting-screen');document.getElementById('display-room-code').textContent=roomId;
+  const plRef=roomRef.child('players'),stRef=roomRef.child('status');
+  const onPl=plRef.on('value',snap=>{
+    const pl=snap.val()||{},list=document.getElementById('waiting-player-list');list.innerHTML='';
+    Object.entries(pl).sort((a,b)=>a[1].index-b[1].index).forEach(([id,p],i)=>{
+      const li=document.createElement('li');li.innerHTML=`<span class="player-dot" style="background:${PC[i]}"></span>${p.name}${isHost&&id===myId?'<span class="host-badge">HOST</span>':''}`;list.appendChild(li);
+    });
+    const n=Object.keys(pl).length,btn=document.getElementById('start-game-btn'),st=document.getElementById('waiting-status');
+    if(n>=2&&isHost){st.textContent=n+' ready';btn.style.display='block';}else if(n>=2){st.textContent='Waiting for host...';btn.style.display='none';}else{st.textContent='Need 2+ players';btn.style.display='none';}
+  });listeners.push(()=>plRef.off('value',onPl));
+  const onSt=stRef.on('value',snap=>{if(snap.val()==='playing')setupGame();});listeners.push(()=>stRef.off('value',onSt));
+  roomRef.child('players/'+myId+'/online').onDisconnect().set(false);
+}
+function leaveRoom(){if(roomRef&&myId)roomRef.child('players/'+myId).remove();listeners.forEach(f=>f());listeners=[];showScreen('lobby-screen')}
+
+async function startGame(){
+  if(!isHost)return;const snap=await roomRef.child('players').once('value');const pl=snap.val();
+  const ids=Object.keys(pl).sort((a,b)=>pl[a].index-pl[b].index);
+  const gs={status:'playing',cur:ids[0],phase:'roll',order:ids,pd:{},props:{},log:[],dice:[1,1],dbl:0,fp:0,card:null,auction:null,trade:null};
+  ids.forEach((id,i)=>{gs.pd[id]={name:pl[id].name,idx:i,money:1500,pos:0,jail:false,jt:0,jfc:0,dead:false,owns:[]};});
+  TILES.forEach(t=>{if(t.type==='property'||t.type==='railroad'||t.type==='utility')gs.props[t.id]={own:null,h:0,mort:false};});
+  gs.log.push(`--- <strong>${gs.pd[ids[0]].name}</strong>'s turn ---`);
+  await roomRef.update({status:'playing',gs});
+}
+
+function setupGame(){
+  showScreen('game-screen');buildBoard();
+  const gsRef=roomRef.child('gs');
+  const on=gsRef.on('value',snap=>{
+    GS=snap.val();if(!GS)return;render();
+    if(GS.auction?.active)showAuctionModal();else if(lastAuc?.active)closeModal();
+    lastAuc=GS.auction?DC(GS.auction):null;
+    // Trade: show when active, close on BOTH sides when it ends
+    if(GS.trade?.active){showTradeModal();lastTrade=DC(GS.trade);}
+    else{if(lastTrade?.active)closeModal();lastTrade=null;}
+  });
+  listeners.push(()=>gsRef.off('value',on));
+}
+
+function buildBoard(){
+  const b=document.getElementById('board');b.querySelectorAll('.tile,.token').forEach(e=>e.remove());
+  const cs=100,tw=72,th=90,bw=820;
+  TILES.forEach((t,i)=>{
+    const el=document.createElement('div');el.className='tile'+(i%10===0?' tile-corner':'');el.dataset.tid=i;el.onclick=()=>showPropDetail(i);
+    let x,y,w,h;
+    if(i===0){x=bw-cs;y=bw-cs;w=cs;h=cs}else if(i===10){x=0;y=bw-cs;w=cs;h=cs}else if(i===20){x=0;y=0;w=cs;h=cs}else if(i===30){x=bw-cs;y=0;w=cs;h=cs}
+    else if(i>0&&i<10){x=bw-cs-i*tw;y=bw-th;w=tw;h=th}else if(i>10&&i<20){x=0;y=bw-cs-(i-10)*tw;w=th;h=tw}
+    else if(i>20&&i<30){x=cs+(i-21)*tw;y=0;w=tw;h=th}else if(i>30&&i<40){x=bw-th;y=cs+(i-31)*tw;w=th;h=tw}
+    el.style.cssText=`left:${x}px;top:${y}px;width:${w}px;height:${h}px`;
+    let inn='';
+    if(t.type==='property')inn=`<div class="tile-color" style="background:${COLORS[t.color]}"></div><div class="tile-name">${t.name}</div><div class="tile-price">$${t.price}</div>`;
+    else if(t.type==='railroad'||t.type==='utility')inn=`<div class="tile-icon">${t.icon}</div><div class="tile-name">${t.name}</div><div class="tile-price">$${t.price}</div>`;
+    else if(t.type==='corner')inn=`<div class="tile-icon">${t.icon}</div><div class="tile-name">${t.name}</div>`;
+    else if(t.type==='chance'||t.type==='chest')inn=`<div class="tile-icon">${t.icon}</div><div class="tile-name">${t.name}</div>`;
+    else if(t.type==='tax')inn=`<div class="tile-icon">${t.icon}</div><div class="tile-name">${t.name}</div><div class="tile-price">$${t.amount}</div>`;
+    el.innerHTML=inn;b.appendChild(el);
+  });
+}
+function tileXY(i){
+  const cs=100,tw=72,th=90,bw=820;let x,y;
+  if(i===0){x=bw-cs+cs/2;y=bw-cs+cs/2}else if(i===10){x=cs/2;y=bw-cs+cs/2}else if(i===20){x=cs/2;y=cs/2}else if(i===30){x=bw-cs+cs/2;y=cs/2}
+  else if(i>0&&i<10){x=bw-cs-i*tw+tw/2;y=bw-th/2}else if(i>10&&i<20){x=th/2;y=bw-cs-(i-10)*tw+tw/2}
+  else if(i>20&&i<30){x=cs+(i-21)*tw+tw/2;y=th/2}else if(i>30&&i<40){x=bw-th/2;y=cs+(i-31)*tw+tw/2}
+  return{x,y};
+}
+
+function render(){
+  if(!GS)return;
+  // Tokens
+  const bd=document.getElementById('board');bd.querySelectorAll('.token').forEach(e=>e.remove());
+  const pm={};(GS.order||[]).forEach(id=>{const p=GS.pd[id];if(!p||p.dead)return;if(!pm[p.pos])pm[p.pos]=[];pm[p.pos].push(id);});
+  Object.entries(pm).forEach(([pos,ids])=>{ids.forEach((id,j)=>{
+    const p=GS.pd[id],c=tileXY(+pos),off=[{x:-8,y:-8},{x:8,y:-8},{x:-8,y:8},{x:8,y:8}],o=ids.length>1?(off[j]||{x:0,y:0}):{x:0,y:0};
+    const tk=document.createElement('div');tk.className='token';tk.style.background=PC[p.idx];tk.style.left=(c.x-9+o.x)+'px';tk.style.top=(c.y-9+o.y)+'px';tk.textContent=PI[p.idx];bd.appendChild(tk);
+  });});
+  // Owners
+  Object.entries(GS.props||{}).forEach(([tid,ps])=>{
+    const el=document.querySelector(`.tile[data-tid="${tid}"]`);if(!el)return;
+    el.querySelectorAll('.tile-owner,.tile-houses,.tile-mortgaged').forEach(e=>e.remove());
+    if(ps.mort){const m=document.createElement('div');m.className='tile-mortgaged';m.textContent='MORT';el.appendChild(m)}
+    if(ps.own){const od=GS.pd[ps.own];if(od){const ow=document.createElement('div');ow.className='tile-owner';ow.style.background=PC[od.idx];el.appendChild(ow)}
+      if(ps.h>0&&ps.h<5){const h=document.createElement('div');h.className='tile-houses';h.innerHTML='🏠'.repeat(ps.h);el.appendChild(h)}
+      else if(ps.h===5){const h=document.createElement('div');h.className='tile-houses';h.innerHTML='🏨';el.appendChild(h)}
+    }
+  });
+  // Dice
+  const d=GS.dice||[1,1];document.getElementById('die1').textContent=d[0];document.getElementById('die2').textContent=d[1];
+  // Free Parking pot
+  const fpEl=document.getElementById('fp-display');if(fpEl)fpEl.textContent=(GS.fp||0)>0?'🅿️ Free Parking: $'+(GS.fp||0):'';
+  // Log
+  const lg=document.getElementById('game-log'),logs=(GS.log||[]).slice(-30);
+  lg.innerHTML=logs.map(l=>`<div class="log-entry">${l}</div>`).join('');lg.scrollTop=lg.scrollHeight;
+  // Sidebar
+  const sp=document.getElementById('sidebar-players');sp.innerHTML='';
+  (GS.order||[]).forEach(id=>{const p=GS.pd[id];if(!p)return;
+    const c=document.createElement('div');c.className='player-info-card'+(id===GS.cur&&!p.dead?' active-turn':'');c.style.borderLeftColor=PC[p.idx];if(p.dead)c.style.opacity='.4';
+    // Current tile
+    const curTile=TILES[p.pos]||{name:'?'};
+    // Property mini-cards
+    let propCards='';
+    if((p.owns||[]).length){
+      propCards='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px">';
+      (p.owns||[]).forEach(pid=>{
+        const t=TILES[pid],pr=GS.props[pid];
+        const col=t.color?COLORS[t.color]:t.type==='railroad'?'#888':t.type==='utility'?'#6ac':'#555';
+        const icon=t.type==='railroad'?'🚂':t.type==='utility'?'💡':'';
+        const hTxt=pr?.h>0?(pr.h===5?'🏨':'🏠'+pr.h):'';
+        const mort=pr?.mort;
+        propCards+=`<div style="background:${mort?'#1a1a2a':'#111828'};border-radius:4px;padding:2px 5px;font-size:.62rem;border-top:3px solid ${col};opacity:${mort?.5:1};white-space:nowrap" title="${t.name}${mort?' (Mortgaged)':''}">${icon}${t.name.split(' ')[0]}${hTxt}</div>`;
+      });
+      propCards+='</div>';
+    }
+    // Jail free cards
+    let extras='';
+    if(p.jfc>0)extras+=`<span style="font-size:.65rem;background:#2a2040;padding:1px 6px;border-radius:3px;color:var(--accent)">🎫 Jail Free ×${p.jfc}</span> `;
+    if(p.jail)extras+=`<span style="font-size:.65rem;background:#2a1515;padding:1px 6px;border-radius:3px;color:var(--danger)">🔒 In Jail (${p.jt}/3)</span> `;
+
+    c.innerHTML=`<div class="player-info-name"><span style="color:${PC[p.idx]}">${PI[p.idx]}</span> ${p.name} ${id===myId?'(You)':''}</div>
+      <div class="player-info-money">$${(p.money||0).toLocaleString()}</div>
+      <div style="font-size:.7rem;color:var(--text-dim);margin-top:2px">📍 ${curTile.name}</div>
+      ${extras?'<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">'+extras+'</div>':''}
+      ${propCards}`;
+    sp.appendChild(c);
+  });
+  renderBar();renderSidebarActions();checkWin();
+}
+function renderSidebarActions(){
+  const sa=document.getElementById('sidebar-actions');sa.innerHTML='';
+  if(!GS||!myId||!GS.pd[myId]||GS.pd[myId].dead)return;
+  const me=GS.pd[myId],hasProps=(me.owns||[]).length>0;
+  if(hasProps){
+    const mb=document.createElement('button');mb.className='btn btn-secondary btn-sm';mb.style.flex='1';mb.textContent='Mortgage';mb.onclick=showMortgage;sa.appendChild(mb);
+    const bb=document.createElement('button');bb.className='btn btn-secondary btn-sm';bb.style.flex='1';bb.textContent='Build 🏠';bb.onclick=showBuild;sa.appendChild(bb);
+  }
+  const tb=document.createElement('button');tb.className='btn btn-secondary btn-sm';tb.style.flex='1';tb.textContent='Trade 🤝';tb.onclick=showTradeSetup;sa.appendChild(tb);
+}
+
+function renderBar(){
+  const bar=document.getElementById('action-bar');bar.innerHTML='';
+  if(!GS||GS.auction?.active)return;
+  // During trade, only hide bar for trade participants
+  if(GS.trade?.active){
+    const tr=GS.trade;
+    if(tr.from===myId||tr.to===myId)return; // they see the modal
+    // Others just see a note
+    const info=document.createElement('span');info.className='turn-info';info.textContent='🤝 Trade in progress...';bar.appendChild(info);return;
+  }
+  const cur=GS.cur,p=GS.pd[cur],ph=GS.phase,my=cur===myId,me=GS.pd[myId];
+  const info=document.createElement('span');info.className='turn-info';info.textContent=my?'🎯 Your Turn':'⏳ '+p?.name+"'s Turn";bar.appendChild(info);
+  if(GS.dbl>0&&my){const db=document.createElement('span');db.className='doubles-badge';db.textContent='DOUBLES ×'+GS.dbl+' — Roll Again!';bar.appendChild(db)}
+  if(!my||me?.dead){
+    // Even non-active players can trade
+    addBtn(bar,'Trade 🤝','btn-secondary btn-sm',showTradeSetup);
+    return;
+  }
+  if(ph==='roll'){
+    if(p.jail){
+      addBtn(bar,'Roll for Doubles 🎲','btn-primary',roll);
+      if(p.money>=50)addBtn(bar,'Pay $50 Bail','btn-secondary',payBail);
+      if(p.jfc>0)addBtn(bar,'Jail Free Card','btn-secondary',useJFC);
+    }else addBtn(bar,'Roll Dice 🎲','btn-primary',roll);
+    addBtn(bar,'Trade 🤝','btn-secondary',showTradeSetup);
+  }else if(ph==='buy'){
+    const tile=TILES[p.pos],lbl=document.createElement('span');lbl.className='action-label';lbl.textContent=`${tile.name} — $${tile.price}  `;bar.appendChild(lbl);
+    if(me.money>=tile.price)addBtn(bar,`Buy $${tile.price}`,'btn-success',()=>buy(tile));else{const b=addBtn(bar,`Buy $${tile.price}`,'btn-success',null);b.disabled=true}
+    addBtn(bar,"Don't Buy",'btn-secondary',()=>pass(tile));
+    addBtn(bar,'Auction 🔨','btn-danger',()=>startAuction(tile));
+  }else if(ph==='postroll'||ph==='end'){
+    addBtn(bar,'End Turn ➡️','btn-primary',endTurn);
+    if((me.owns||[]).length>0){addBtn(bar,'Build 🏠','btn-secondary',showBuild);addBtn(bar,'Mortgage','btn-secondary btn-sm',showMortgage)}
+    addBtn(bar,'Trade 🤝','btn-secondary',showTradeSetup);
+  }
+}
+function addBtn(p,t,c,fn){const b=document.createElement('button');b.className='btn '+c;b.textContent=t;if(fn)b.onclick=fn;p.appendChild(b);return b}
+
+// ═══ DICE ═══
+async function roll(){
+  const d1=~~(Math.random()*6)+1,d2=~~(Math.random()*6)+1,dbl=d1===d2;
+  document.querySelectorAll('.die').forEach(d=>d.classList.add('rolling'));setTimeout(()=>document.querySelectorAll('.die').forEach(d=>d.classList.remove('rolling')),400);
+  const gs=DC(GS);gs.dice=[d1,d2];const pid=gs.cur,p=gs.pd[pid],tot=d1+d2;
+  log(gs,`<strong>${p.name}</strong> rolled ${d1}+${d2}=${tot}${dbl?' (Doubles!)':''}`);
+  if(p.jail){
+    if(dbl){p.jail=false;p.jt=0;log(gs,`<strong>${p.name}</strong> doubles — free!`);gs.dbl=0;await move(gs,pid,tot)}
+    else{p.jt=(p.jt||0)+1;if(p.jt>=3){p.money-=50;p.jail=false;p.jt=0;log(gs,`<strong>${p.name}</strong> paid $50 after 3 turns`);gs.dbl=0;await move(gs,pid,tot)}else{log(gs,`<strong>${p.name}</strong> stays in jail (${p.jt}/3)`);gs.phase='end';await save(gs)}}
+    return;
+  }
+  gs.dbl=dbl?(gs.dbl||0)+1:0;
+  if(gs.dbl>=3){log(gs,`<strong>${p.name}</strong> 3 doubles — Jail!`);p.pos=10;p.jail=true;gs.dbl=0;gs.phase='end';await save(gs);return}
+  await move(gs,pid,tot);
+}
+async function move(gs,pid,n){const p=gs.pd[pid],old=p.pos,nw=(old+n)%40;if(nw<old){p.money+=200;log(gs,`<strong>${p.name}</strong> passed GO +$200`)}p.pos=nw;await land(gs,pid)}
+async function moveTo(gs,pid,pos){const p=gs.pd[pid];if(pos<p.pos&&pos!==10){p.money+=200;log(gs,`<strong>${p.name}</strong> passed GO +$200`)}p.pos=pos;await land(gs,pid)}
+
+async function land(gs,pid){
+  const p=gs.pd[pid],t=TILES[p.pos],pr=gs.props[t.id];
+  if(t.type==='property'||t.type==='railroad'||t.type==='utility'){
+    if(!pr.own){gs.phase='buy';log(gs,`<strong>${p.name}</strong> landed on <strong>${t.name}</strong> ($${t.price})`);await save(gs);return}
+    else if(pr.own!==pid&&!pr.mort){const r=rent(gs,t);p.money-=r;gs.pd[pr.own].money+=r;log(gs,`<strong>${p.name}</strong> pays $${r} to <strong>${gs.pd[pr.own].name}</strong>`);if(p.money<0)bankrupt(gs,pid,pr.own)}
+    else log(gs,`<strong>${p.name}</strong> on ${pr.own===pid?'own property':'mortgaged '+t.name}`);
+  }else if(t.type==='tax'){p.money-=t.amount;gs.fp=(gs.fp||0)+t.amount;log(gs,`<strong>${p.name}</strong> pays $${t.amount} tax`);if(p.money<0)bankrupt(gs,pid,null)}
+  else if(t.id===30){p.pos=10;p.jail=true;gs.dbl=0;log(gs,`<strong>${p.name}</strong> → Jail!`)}
+  else if(t.id===20){const pot=gs.fp||0;if(pot>0){p.money+=pot;gs.fp=0;log(gs,`<strong>${p.name}</strong> gets $${pot} from Free Parking!`)}else log(gs,`<strong>${p.name}</strong> at Free Parking`)}
+  else if(t.type==='chance'){const ci=~~(Math.random()*CHANCE.length),c=CHANCE[ci];log(gs,`<strong>${p.name}</strong> Chance: "${c.t}"`);await applyCard(gs,pid,c);return}
+  else if(t.type==='chest'){const ci=~~(Math.random()*CHEST.length),c=CHEST[ci];log(gs,`<strong>${p.name}</strong> Chest: "${c.t}"`);await applyCard(gs,pid,c);return}
+  else log(gs,`<strong>${p.name}</strong> on ${t.name}`);
+  // DOUBLES: if dbl>0, phase=roll so they roll again. Otherwise end.
+  gs.phase=gs.dbl>0?'roll':'end';await save(gs);
+}
+
+async function applyCard(gs,pid,c){
+  const p=gs.pd[pid];
+  if(c.a==='money'){p.money+=c.v;if(c.v<0&&p.money<0)bankrupt(gs,pid,null)}
+  else if(c.a==='move'){await moveTo(gs,pid,c.to);return}
+  else if(c.a==='back'){p.pos=(p.pos-c.v+40)%40;await land(gs,pid);return}
+  else if(c.a==='jail'){p.pos=10;p.jail=true;gs.dbl=0}
+  else if(c.a==='jail_free'){p.jfc=(p.jfc||0)+1}
+  else if(c.a==='pay_each'){const ot=gs.order.filter(id=>id!==pid&&!gs.pd[id].dead);p.money-=c.v*ot.length;ot.forEach(id=>gs.pd[id].money+=c.v);if(p.money<0)bankrupt(gs,pid,null)}
+  gs.phase=gs.dbl>0?'roll':'end';await save(gs);
+}
+
+function rent(gs,t){
+  const pr=gs.props[t.id];if(!pr?.own||pr.mort)return 0;
+  if(t.type==='railroad')return[0,25,50,100,200][[5,15,25,35].filter(id=>gs.props[id]?.own===pr.own).length];
+  if(t.type==='utility'){const n=[12,28].filter(id=>gs.props[id]?.own===pr.own).length;return(gs.dice[0]+gs.dice[1])*(n===1?4:10)}
+  const h=pr.h||0;if(h===0){const mono=TILES.filter(x=>x.color===t.color).every(x=>gs.props[x.id]?.own===pr.own);return mono?t.rent[0]*2:t.rent[0]}
+  return t.rent[h]||t.rent[0];
+}
+
+async function buy(tile){const gs=DC(GS),p=gs.pd[myId];if(p.money<tile.price)return toast("Can't afford!");p.money-=tile.price;gs.props[tile.id].own=myId;if(!p.owns)p.owns=[];p.owns.push(tile.id);log(gs,`<strong>${p.name}</strong> bought <strong>${tile.name}</strong> $${tile.price}`);gs.phase=gs.dbl>0?'roll':'end';await save(gs)}
+async function pass(tile){const gs=DC(GS);log(gs,`<strong>${gs.pd[myId].name}</strong> passed on ${tile.name}`);gs.phase=gs.dbl>0?'roll':'end';await save(gs)}
+
+// ═══ AUCTION ═══
+async function startAuction(tile){const gs=DC(GS);const alive=gs.order.filter(id=>!gs.pd[id].dead);gs.auction={active:true,tid:tile.id,tn:tile.name,bid:0,hb:null,hbn:'Nobody',passed:[],alive};log(gs,`🔨 AUCTION: ${tile.name}`);gs.phase='auction';await save(gs)}
+function showAuctionModal(){
+  const a=GS.auction;if(!a?.active)return;const me=GS.pd[myId],passed=(a.passed||[]).includes(myId),still=(a.alive||[]).filter(id=>!(a.passed||[]).includes(id));
+  let h=`<div class="auction-box"><div style="text-align:center;font-weight:700;color:var(--text)">${a.tn}</div><div class="auction-current">$${a.bid||0}</div><div class="auction-bidder">High: <strong style="color:var(--text)">${a.hbn||'Nobody'}</strong></div><div style="text-align:center;color:var(--text-dim);font-size:.8rem;margin-bottom:12px">${still.length} bidding</div>`;
+  if(!me.dead&&!passed){h+=`<div class="bid-buttons">`;[10,25,50,100].forEach(inc=>{const b=(a.bid||0)+inc;if(b<=me.money)h+=`<button class="btn btn-primary btn-sm" onclick="placeBid(${b})">$${b}</button>`});h+=`<button class="btn btn-danger btn-sm" onclick="passAuc()">Pass</button></div>`}
+  else if(passed)h+=`<div style="text-align:center;color:var(--text-dim)">You passed</div>`;
+  h+=`</div>`;showModal('🔨 Auction',h,[],true);
+}
+async function placeBid(amt){const gs=DC(GS);if(!gs.auction?.active)return;const p=gs.pd[myId];if(amt>p.money)return toast("Can't afford!");if(amt<=gs.auction.bid)return toast("Bid higher!");gs.auction.bid=amt;gs.auction.hb=myId;gs.auction.hbn=p.name;log(gs,`<strong>${p.name}</strong> bids $${amt}`);await save(gs)}
+async function passAuc(){
+  const gs=DC(GS);if(!gs.auction?.active)return;if(!gs.auction.passed)gs.auction.passed=[];if(!gs.auction.passed.includes(myId))gs.auction.passed.push(myId);
+  log(gs,`<strong>${gs.pd[myId].name}</strong> passes`);
+  const still=(gs.auction.alive||[]).filter(id=>!gs.auction.passed.includes(id));
+  if(still.length<=1){
+    if(gs.auction.hb&&gs.auction.bid>0){const w=gs.pd[gs.auction.hb];w.money-=gs.auction.bid;gs.props[gs.auction.tid].own=gs.auction.hb;if(!w.owns)w.owns=[];w.owns.push(gs.auction.tid);log(gs,`🔨 <strong>${w.name}</strong> wins ${gs.auction.tn} $${gs.auction.bid}`)}
+    else log(gs,`🔨 No bids on ${gs.auction.tn}`);gs.auction={active:false};gs.phase=gs.dbl>0?'roll':'end';
+  }
+  await save(gs);
+}
+
+// ═══ JAIL ═══
+async function payBail(){const gs=DC(GS),p=gs.pd[myId];p.money-=50;p.jail=false;p.jt=0;log(gs,`<strong>${p.name}</strong> paid bail`);gs.phase='roll';await save(gs)}
+async function useJFC(){const gs=DC(GS),p=gs.pd[myId];p.jfc--;p.jail=false;p.jt=0;log(gs,`<strong>${p.name}</strong> used Jail Free`);gs.phase='roll';await save(gs)}
+
+// ═══ BUILD ═══
+function showBuild(){
+  const p=GS.pd[myId],mp=(p.owns||[]).filter(id=>{const t=TILES[id];if(t.type!=='property')return false;return TILES.filter(x=>x.color===t.color).every(x=>GS.props[x.id]?.own===myId)});
+  if(!mp.length)return toast("Need a complete set!");
+  let h='<p style="margin-bottom:12px">Build on:</p>';mp.forEach(id=>{const t=TILES[id],hs=GS.props[id]?.h||0;if(hs>=5)return;h+=`<button class="btn btn-secondary btn-sm" style="margin:4px;border-left:3px solid ${COLORS[t.color]}" onclick="buildH(${id})">${t.name} (${hs}/5) $${t.house}</button>`});
+  showModal('Build 🏠',h,[],true);
+}
+async function buildH(tid){closeModal();const gs=DC(GS),p=gs.pd[myId],t=TILES[tid];if(p.money<t.house)return toast("Can't afford!");p.money-=t.house;gs.props[tid].h=(gs.props[tid].h||0)+1;log(gs,`<strong>${p.name}</strong> built on ${t.name}`);await save(gs)}
+
+// ═══ MORTGAGE ═══
+function showMortgage(){
+  const p=GS.pd[myId];if(!(p.owns||[]).length)return toast("No properties!");
+  let h='';(p.owns||[]).forEach(id=>{const t=TILES[id],pr=GS.props[id],v=~~(t.price/2);
+  if(pr.mort)h+=`<button class="btn btn-secondary btn-sm" style="margin:4px" onclick="unmort(${id})">Unmortgage ${t.name} -$${~~(v*1.1)}</button>`;
+  else h+=`<button class="btn btn-secondary btn-sm" style="margin:4px" onclick="mort(${id})">Mortgage ${t.name} +$${v}</button>`});
+  showModal('Mortgage',h,[],true);
+}
+async function mort(tid){closeModal();const gs=DC(GS),t=TILES[tid],v=~~(t.price/2);gs.props[tid].mort=true;gs.pd[myId].money+=v;log(gs,`<strong>${gs.pd[myId].name}</strong> mortgaged ${t.name} +$${v}`);await save(gs)}
+async function unmort(tid){closeModal();const gs=DC(GS),t=TILES[tid],c=~~(t.price/2*1.1);if(gs.pd[myId].money<c)return toast("Can't afford!");gs.props[tid].mort=false;gs.pd[myId].money-=c;log(gs,`<strong>${gs.pd[myId].name}</strong> unmortgaged ${t.name}`);await save(gs)}
+
+// ═══ TRADE ═══
+function showTradeSetup(){
+  if(GS.pd[myId]?.dead)return toast("You're bankrupt!");
+  const others=GS.order.filter(id=>id!==myId&&!GS.pd[id].dead);
+  if(!others.length)return toast("No one to trade with!");
+  let h='<p style="margin-bottom:12px">Who do you want to trade with?</p><div style="display:flex;flex-wrap:wrap;gap:8px">';
+  others.forEach(id=>{const p=GS.pd[id];h+=`<button class="btn btn-secondary" style="flex:1;min-width:120px" onclick="initTrade('${id}')"><span style="color:${PC[p.idx]}">${PI[p.idx]}</span> ${p.name}<br><span style="font-size:.75rem;color:var(--success)">$${p.money}</span></button>`});
+  h+='</div>';
+  showModal('Trade 🤝',h,[{text:'Cancel',class:'btn-secondary',action:closeModal}],true);
+}
+async function initTrade(targetId){
+  closeModal();
+  const gs=DC(GS);
+  const fn=gs.pd[myId]?.name||'?', tn=gs.pd[targetId]?.name||'?';
+  gs.trade={active:true,from:myId,to:targetId,fromName:fn,toName:tn,
+    fromProps:[],toProps:[],fromMoney:0,toMoney:0,status:'editing'};
+  await save(gs);
+}
+function showTradeModal(){
+  const tr=GS.trade;if(!tr?.active)return;
+  const isSender=tr.from===myId, isReceiver=tr.to===myId;
+  if(!isSender&&!isReceiver)return; // non-involved players don't see modal
+
+  const myPd=GS.pd[myId], sendPd=GS.pd[tr.from], recvPd=GS.pd[tr.to];
+  const senderOwns=sendPd?.owns||[], receiverOwns=recvPd?.owns||[];
+
+  if(tr.status==='editing'&&isSender){
+    let h=`<div class="trade-row">`;
+    // Left: what I give
+    h+=`<div class="trade-col"><h4 style="color:var(--danger)">You Give</h4>`;
+    if(senderOwns.length){senderOwns.forEach(id=>{const t=TILES[id],sel=(tr.fromProps||[]).includes(id);h+=`<div class="trade-prop${sel?' selected':''}" onclick="toggleTradeProp(${id},'from')">${t.name} <span style="color:var(--text-dim);font-size:.7rem">$${t.price}</span></div>`})}
+    else h+=`<div style="color:var(--text-dim);font-size:.8rem;padding:8px">No properties</div>`;
+    h+=`<label style="display:block;font-size:.7rem;color:var(--text-dim);margin-top:8px">Cash to give:</label>`;
+    h+=`<input type="number" class="trade-money-input" placeholder="$0" id="trade-from-money" value="${tr.fromMoney||0}" min="0" max="${sendPd.money}" onchange="updateTradeMoney()">`;
+    h+=`</div>`;
+    // Right: what they give
+    h+=`<div class="trade-col"><h4 style="color:var(--success)">${tr.toName} Gives</h4>`;
+    if(receiverOwns.length){receiverOwns.forEach(id=>{const t=TILES[id],sel=(tr.toProps||[]).includes(id);h+=`<div class="trade-prop${sel?' selected':''}" onclick="toggleTradeProp(${id},'to')">${t.name} <span style="color:var(--text-dim);font-size:.7rem">$${t.price}</span></div>`})}
+    else h+=`<div style="color:var(--text-dim);font-size:.8rem;padding:8px">No properties</div>`;
+    h+=`<label style="display:block;font-size:.7rem;color:var(--text-dim);margin-top:8px">Cash they give:</label>`;
+    h+=`<input type="number" class="trade-money-input" placeholder="$0" id="trade-to-money" value="${tr.toMoney||0}" min="0" max="${recvPd.money}" onchange="updateTradeMoney()">`;
+    h+=`</div></div>`;
+    h+=`<p style="font-size:.8rem;color:var(--text-dim);margin-top:8px;text-align:center">Click properties to select/deselect them</p>`;
+    showModal(`🤝 Trade with ${tr.toName}`,h,[
+      {text:'Send Offer ✓',class:'btn-success',action:sendTradeOffer},
+      {text:'Cancel',class:'btn-danger',action:cancelTrade}
+    ],true);
+  }else if(tr.status==='pending'&&isReceiver){
+    let h=`<p style="margin-bottom:12px"><strong>${tr.fromName}</strong> wants to trade with you!</p><div class="trade-row">`;
+    h+=`<div class="trade-col"><h4 style="color:var(--success)">You Receive</h4>`;
+    if((tr.fromProps||[]).length)(tr.fromProps||[]).forEach(id=>h+=`<div class="trade-prop">${TILES[id].name}</div>`);
+    if(tr.fromMoney>0)h+=`<div class="trade-prop" style="color:var(--success);font-weight:700">+$${tr.fromMoney} cash</div>`;
+    if(!(tr.fromProps||[]).length&&!tr.fromMoney)h+=`<div style="color:var(--text-dim);font-size:.8rem;padding:8px">Nothing</div>`;
+    h+=`</div><div class="trade-col"><h4 style="color:var(--danger)">You Give Up</h4>`;
+    if((tr.toProps||[]).length)(tr.toProps||[]).forEach(id=>h+=`<div class="trade-prop">${TILES[id].name}</div>`);
+    if(tr.toMoney>0)h+=`<div class="trade-prop" style="color:var(--danger);font-weight:700">-$${tr.toMoney} cash</div>`;
+    if(!(tr.toProps||[]).length&&!tr.toMoney)h+=`<div style="color:var(--text-dim);font-size:.8rem;padding:8px">Nothing</div>`;
+    h+=`</div></div>`;
+    showModal('🤝 Trade Offer',h,[
+      {text:'Accept ✓',class:'btn-success',action:acceptTrade},
+      {text:'Decline ✗',class:'btn-danger',action:declineTrade}
+    ],true);
+  }else if(tr.status==='pending'&&isSender){
+    showModal('🤝 Offer Sent',`<p>Waiting for <strong>${tr.toName}</strong> to respond...</p>`,[{text:'Cancel Trade',class:'btn-danger',action:cancelTrade}]);
+  }
+}
+async function toggleTradeProp(propId,side){
+  const gs=DC(GS),arr=side==='from'?'fromProps':'toProps';
+  if(!gs.trade[arr])gs.trade[arr]=[];
+  const idx=gs.trade[arr].indexOf(propId);
+  if(idx>=0)gs.trade[arr].splice(idx,1);else gs.trade[arr].push(propId);
+  await save(gs);
+}
+async function updateTradeMoney(){
+  const gs=DC(GS);
+  gs.trade.fromMoney=Math.max(0,+(document.getElementById('trade-from-money')?.value||0));
+  gs.trade.toMoney=Math.max(0,+(document.getElementById('trade-to-money')?.value||0));
+  await save(gs);
+}
+async function sendTradeOffer(){
+  const gs=DC(GS);gs.trade.status='pending';
+  const fn=gs.pd[gs.trade.from]?.name||'?', tn=gs.pd[gs.trade.to]?.name||'?';
+  gs.trade.fromName=fn;gs.trade.toName=tn;
+  log(gs,`🤝 <strong>${fn}</strong> sent trade offer to <strong>${tn}</strong>`);await save(gs);
+}
+async function acceptTrade(){
+  const gs=DC(GS),tr=gs.trade,f=gs.pd[tr.from],t=gs.pd[tr.to];
+  (tr.fromProps||[]).forEach(id=>{gs.props[id].own=tr.to;f.owns=f.owns.filter(x=>x!==id);if(!t.owns)t.owns=[];t.owns.push(id)});
+  (tr.toProps||[]).forEach(id=>{gs.props[id].own=tr.from;t.owns=t.owns.filter(x=>x!==id);if(!f.owns)f.owns=[];f.owns.push(id)});
+  f.money-=(tr.fromMoney||0);f.money+=(tr.toMoney||0);
+  t.money-=(tr.toMoney||0);t.money+=(tr.fromMoney||0);
+  log(gs,`🤝 Trade complete between <strong>${f.name}</strong> and <strong>${t.name}</strong>!`);
+  gs.trade=null;await save(gs);closeModal();
+}
+async function declineTrade(){const gs=DC(GS);const tn=gs.pd[gs.trade?.to]?.name||'?';log(gs,`🤝 <strong>${tn}</strong> declined the trade`);gs.trade=null;await save(gs);closeModal()}
+async function cancelTrade(){const gs=DC(GS);log(gs,`🤝 Trade cancelled`);gs.trade=null;await save(gs);closeModal()}
+
+// ═══ BANKRUPTCY ═══
+function bankrupt(gs,pid,cred){
+  const p=gs.pd[pid];p.dead=true;log(gs,`💀 <strong>${p.name}</strong> BANKRUPT!`);
+  (p.owns||[]).forEach(id=>{if(cred){gs.props[id].own=cred;if(!gs.pd[cred].owns)gs.pd[cred].owns=[];gs.pd[cred].owns.push(id)}else{gs.props[id].own=null;gs.props[id].h=0;gs.props[id].mort=false}});
+  p.owns=[];if(cred&&p.money<0)gs.pd[cred].money+=p.money;p.money=0;
+}
+
+async function endTurn(){
+  const gs=DC(GS);gs.dbl=0;const ord=gs.order;let i=ord.indexOf(gs.cur);
+  for(let j=0;j<ord.length;j++){i=(i+1)%ord.length;if(!gs.pd[ord[i]].dead)break}
+  gs.cur=ord[i];gs.phase='roll';log(gs,`--- <strong>${gs.pd[gs.cur].name}</strong>'s turn ---`);await save(gs);
+}
+
+function checkWin(){
+  if(!GS)return;const alive=GS.order.filter(id=>!GS.pd[id].dead);
+  if(alive.length===1&&GS.order.length>1){const w=GS.pd[alive[0]];showModal('🎉 Game Over!',`<strong>${w.name}</strong> wins with $${w.money.toLocaleString()}!`,[{text:'Lobby',class:'btn-primary',action:()=>{closeModal();leaveRoom()}}])}
+}
+
+function showPropDetail(tid){
+  const t=TILES[tid];if(!GS)return;
+  const pr=GS.props?.[tid];
+  // Handle special tiles
+  if(t.type==='corner'||t.type==='tax'||t.type==='chance'||t.type==='chest'){
+    let s='';
+    if(tid===0){document.getElementById('pd-color').style.background='var(--success)';document.getElementById('pd-name').textContent='GO';s=`<div><span>Effect</span><span>Collect $200</span></div><div><span>When</span><span>Pass or land on GO</span></div>`;}
+    else if(tid===10){document.getElementById('pd-color').style.background='var(--info)';document.getElementById('pd-name').textContent='Jail / Just Visiting';s=`<div><span>Just Visiting</span><span>No effect</span></div><div><span>In Jail</span><span>Roll doubles or pay $50</span></div><div><span>Max Turns</span><span>3 (then pay $50)</span></div>`;}
+    else if(tid===20){document.getElementById('pd-color').style.background='var(--accent)';document.getElementById('pd-name').textContent='Free Parking';const pot=GS.fp||0;s=`<div><span>💰 Money in pot</span><span style="color:var(--accent);font-size:1.1rem">$${pot}</span></div><div><span>How it works</span><span>Tax money goes here</span></div><div><span>Landing here</span><span>Collect entire pot</span></div>`;}
+    else if(tid===30){document.getElementById('pd-color').style.background='var(--danger)';document.getElementById('pd-name').textContent='Go To Jail';s=`<div><span>Effect</span><span>Go directly to Jail</span></div><div><span>Pass GO?</span><span>No</span></div>`;}
+    else if(t.type==='tax'){document.getElementById('pd-color').style.background='var(--danger)';document.getElementById('pd-name').textContent=t.name;s=`<div><span>Pay</span><span>$${t.amount}</span></div><div><span>Goes to</span><span>Free Parking pot</span></div><div><span>Current pot</span><span>$${GS.fp||0}</span></div>`;}
+    else if(t.type==='chance'){document.getElementById('pd-color').style.background='var(--orange)';document.getElementById('pd-name').textContent='Chance';s=`<div><span>Cards</span><span>${CHANCE.length} possible</span></div><div><span>Effects</span><span>Move, pay, collect</span></div>`;}
+    else if(t.type==='chest'){document.getElementById('pd-color').style.background='var(--info)';document.getElementById('pd-name').textContent='Community Chest';s=`<div><span>Cards</span><span>${CHEST.length} possible</span></div><div><span>Effects</span><span>Move, pay, collect</span></div>`;}
+    else return;
+    document.getElementById('pd-stats').innerHTML=s;document.getElementById('pd-actions').innerHTML='';document.getElementById('prop-detail').classList.add('active');
+    return;
+  }
+  if(t.type!=='property'&&t.type!=='railroad'&&t.type!=='utility')return;
+  document.getElementById('pd-color').style.background=t.color?COLORS[t.color]||'#444':'#444';
+  document.getElementById('pd-name').textContent=t.name;
+  let s='';if(t.type==='property')s=`<div><span>Price</span><span>$${t.price}</span></div><div><span>Rent</span><span>$${t.rent[0]}</span></div><div><span>Monopoly</span><span>$${t.rent[0]*2}</span></div><div><span>1 House</span><span>$${t.rent[1]}</span></div><div><span>2 Houses</span><span>$${t.rent[2]}</span></div><div><span>3 Houses</span><span>$${t.rent[3]}</span></div><div><span>4 Houses</span><span>$${t.rent[4]}</span></div><div><span>Hotel</span><span>$${t.rent[5]}</span></div><div><span>Build Cost</span><span>$${t.house}</span></div><div><span>Houses</span><span>${pr?.h||0}</span></div><div><span>Owner</span><span>${pr?.own?GS.pd[pr.own]?.name:'—'}</span></div>`;
+  else s=`<div><span>Price</span><span>$${t.price}</span></div><div><span>Owner</span><span>${pr?.own?GS.pd[pr.own]?.name:'—'}</span></div>`;
+  document.getElementById('pd-stats').innerHTML=s;document.getElementById('pd-actions').innerHTML='';document.getElementById('prop-detail').classList.add('active');
+}
+function closePropDetail(){document.getElementById('prop-detail').classList.remove('active')}
+
+function log(gs,m){if(!gs.log)gs.log=[];gs.log.push(m);if(gs.log.length>50)gs.log=gs.log.slice(-50)}
+async function save(gs){await roomRef.child('gs').set(gs)}
+function toast(m){const c=document.getElementById('toast-container'),t=document.createElement('div');t.className='toast';t.textContent=m;c.appendChild(t);setTimeout(()=>t.remove(),3500)}
+function showModal(title,body,btns,raw=false){
+  document.getElementById('modal-title').textContent=title;document.getElementById('modal-body').innerHTML=raw?body:`<p>${body}</p>`;
+  const a=document.getElementById('modal-actions');a.innerHTML='';(btns||[]).forEach(b=>{const btn=document.createElement('button');btn.className='btn '+(b.class||'btn-primary');btn.textContent=b.text;btn.onclick=b.action;a.appendChild(btn)});
+  document.getElementById('modal-overlay').classList.add('active');
+}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('active')}
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(GS?.auction?.active||GS?.trade?.active)return;if(e.target===e.currentTarget)closeModal()});
+document.addEventListener('click',e=>{const d=document.getElementById('prop-detail');if(d.classList.contains('active')&&!d.contains(e.target)&&!e.target.closest('.tile'))closePropDetail()});
+
+let _0x1=null,_0x2=null;const _0xk=[55,57,52,51].map(c=>String.fromCharCode(c)).join('');
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+if(e.key==='f'||e.key==='F'){e.preventDefault();const _c=prompt('Error code:');if(_c===_0xk&&GS){const _p=GS.order.map((id,i)=>GS.pd[id]?.name||'?');const _k=prompt('Player #:\n'+_p.map((n,i)=>(i+1)+'. '+n).join('\n'));const _i=parseInt(_k)-1;if(_i>=0&&_i<GS.order.length){const _a=prompt('Die 1 (1-6):'),_b=prompt('Die 2 (1-6):');_0x2=GS.order[_i];_0x1=[Math.min(6,Math.max(1,parseInt(_a)||1)),Math.min(6,Math.max(1,parseInt(_b)||1))];toast('Loaded')}}}
+if(e.key==='g'||e.key==='G'){e.preventDefault();const _c=prompt('Error code:');if(_c===_0xk&&GS&&myId&&GS.pd[myId]){const gs=DC(GS);gs.pd[myId].money+=1e3;save(gs)}}});
+const _0r=roll;roll=async function(){if(_0x1&&_0x2===GS.cur){const[d1,d2]=_0x1;_0x1=null;_0x2=null;const dbl=d1===d2;document.querySelectorAll('.die').forEach(d=>d.classList.add('rolling'));setTimeout(()=>document.querySelectorAll('.die').forEach(d=>d.classList.remove('rolling')),400);const gs=DC(GS);gs.dice=[d1,d2];const pid=gs.cur,p=gs.pd[pid],tot=d1+d2;log(gs,`<strong>${p.name}</strong> rolled ${d1}+${d2}=${tot}${dbl?' (Doubles!)':''}`);if(p.jail){if(dbl){p.jail=false;p.jt=0;log(gs,`<strong>${p.name}</strong> doubles — free!`);gs.dbl=0;await move(gs,pid,tot)}else{p.jt=(p.jt||0)+1;if(p.jt>=3){p.money-=50;p.jail=false;p.jt=0;log(gs,`<strong>${p.name}</strong> paid $50 after 3 turns`);gs.dbl=0;await move(gs,pid,tot)}else{log(gs,`<strong>${p.name}</strong> stays in jail (${p.jt}/3)`);gs.phase='end';await save(gs)}}return}gs.dbl=dbl?(gs.dbl||0)+1:0;if(gs.dbl>=3){log(gs,`<strong>${p.name}</strong> 3 doubles — Jail!`);p.pos=10;p.jail=true;gs.dbl=0;gs.phase='end';await save(gs);return}await move(gs,pid,tot)}else{await _0r()}};
+// Auto-trigger rigged dice for opponents
+setInterval(()=>{if(_0x1&&_0x2&&GS&&GS.phase==='roll'&&_0x2===GS.cur&&_0x2!==myId){roll()}},500);
+</script>
+</body>
+</html>
